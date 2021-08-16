@@ -17,6 +17,8 @@ import java.io.InputStream;
  * @Description
  */
 public class Mytest {
+
+
     @Test
     public void test1() throws IOException {
         //1、根据全局配置文件创建出一个sqlSessionFactory
