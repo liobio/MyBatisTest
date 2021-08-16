@@ -30,7 +30,7 @@ public class Mytest {
 
         SqlSession openSession = sqlSessionFactory.openSession();
         EmployeeDao employeeDao = openSession.getMapper(EmployeeDao.class);
-        Employee employee =employeeDao.getEmployeeById(2);
+        Employee employee =employeeDao.getEmployeeById(1);
         System.out.println(employee);
     }
 }
