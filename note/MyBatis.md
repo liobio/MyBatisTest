@@ -218,6 +218,8 @@ public void test1() throws IOException {
 
 2. openSession(true)；设置是否自动提交事务，true为自动提交，false为不自动提交（例子：修改方法）
 
+   ![image-20210817215737384](C:\Users\LIOBIO\AppData\Roaming\Typora\typora-user-images\image-20210817215737384.png)
+
 
 ```java
 public class EmployeeTest {

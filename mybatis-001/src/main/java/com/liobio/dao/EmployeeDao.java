@@ -12,4 +12,11 @@ import com.liobio.bean.Employee;
 public interface EmployeeDao {
 
     public Employee getEmployeeById(Integer id);
+
+    public int updateEmployee(Employee employee);
+
+    public int deleteEmployeeById(Integer id);
+
+    public  int insertEmployee(Employee employee);
+
 }
