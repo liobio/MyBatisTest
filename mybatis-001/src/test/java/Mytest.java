@@ -28,9 +28,20 @@ public class Mytest {
         InputStream inputStream = Resources.getResourceAsStream(resource);
         SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
 
+        Employee employee = new Employee();
+        //2、获取和 数据库的一次会话；与getConnection()；拿到一条连接
         SqlSession openSession = sqlSessionFactory.openSession();
-        EmployeeDao employeeDao = openSession.getMapper(EmployeeDao.class);
-        Employee employee =employeeDao.getEmployeeById(1);
+        try {
+            //3、使用SqlSession操作数据库，获取到dao接口的实现
+            EmployeeDao employeeDaoImpl = openSession.getMapper(EmployeeDao.class);
+            //4、拿到dao接口impl实现类后，调用相对于的方法即可
+            employee = employeeDaoImpl.getEmployeeById(1);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            openSession.close();
+        }
         System.out.println(employee);
     }
+
 }

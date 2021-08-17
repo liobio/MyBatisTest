@@ -10,9 +10,19 @@ package com.liobio.bean;
 public class Employee {
 
     private Integer id;
-    private String employeeName;
+    private String employee_name;
     private Integer gender;
     private String email;
+
+    @Override
+    public String toString() {
+        return "Employee{" +
+                "id=" + id +
+                ", employee_name='" + employee_name + '\'' +
+                ", gender=" + gender +
+                ", email='" + email + '\'' +
+                '}';
+    }
 
     public Integer getId() {
         return id;
@@ -22,13 +32,12 @@ public class Employee {
         this.id = id;
     }
 
-
-    public String getEmployeeName() {
-        return employeeName;
+    public String getEmployee_name() {
+        return employee_name;
     }
 
-    public void setEmployeeName(String employeeName) {
-        this.employeeName = employeeName;
+    public void setEmployee_name(String employee_name) {
+        this.employee_name = employee_name;
     }
 
     public Integer getGender() {
@@ -45,14 +54,5 @@ public class Employee {
 
     public void setEmail(String email) {
         this.email = email;
-    }
-    @Override
-    public String toString() {
-        return "Employee{" +
-                "id=" + id +
-                ", employeeName='" + employeeName + '\'' +
-                ", gender=" + gender +
-                ", email='" + email + '\'' +
-                '}';
     }
 }
