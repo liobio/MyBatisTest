@@ -8,6 +8,8 @@
     <!--    select:用来定义一个查询操作-->
     <!--    id:方法名，相当于这个配置是对于某个方法的实现-->
     <!--    resultType :指定方法运行后的返回值类型，( 查询操作必须指定的)-->
+    <!--    parameterType	将会传入这条语句的参数的类全限定名或别名。这个属性是可选的，
+            因为 MyBatis 可以通过类型处理器（TypeHandler）推断出具体传入语句的参数，默认值为未设置（unset）。-->
     <select id="getEmployeeById" parameterType="Integer" resultType="com.liobio.bean.Employee">
         select *
         from t_employee
