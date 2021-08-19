@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--    namespace:名称空间;写接口的全类名，相当于告诉MyBatis这个配置文件是实现哪个接口的-->
+<mapper namespace="com.liobio.dao.EmployeeDao">
+
+    <!--    1、单个参数-->
+    <!--    基本类型：-->
+    <!--    取值：#{随便写}-->
+    <!--    2、多个参数：-->
+    <!--    取值：#{参数名}是无效的的-->
+    <!--    0,1（参数索引）或者param1，param2（第几个参数paramN）-->
+    <!--    原因：-->
+    <!--    只要传入多个参数，mybatis会自动的将这些参数封装到一个map中；封装时使用的key就是参数的索引和参数的第几个标识-->
+    <!--    @param：为参数指定封装map时的key；命名参数-->
+    <!--    我们可以告诉mybatis，封装参数map的时候别乱来-->
+    <!--    3、传入map-->
+    <!--    封装多个参数为map，直接传递-->
+    <!--    4、传入bean-->
+    <!--    取值：#{bean属性名}-->
+
+        <!--    使用 @param-->
+        <select id="getEmployeeByIdAndName" resultType="com.liobio.bean.Employee">
+            select *
+            from t_employee
+            where id = #{id} and employee_name=#{employee_name}
+        </select>
+        <!--    使用 参数索引-->
+<!--    <select id="getEmployeeByIdAndName" resultType="com.liobio.bean.Employee">-->
+<!--        select *-->
+<!--        from t_employee-->
+<!--        where id = #{param1} and employee_name=#{param2}-->
+<!--    </select>-->
+
+<!--         where id = #{id} and employee_name=#{employee_name}-->
+<!--    传多个参时取值：#{参数名}是无效的的-->
+<!--    			0,1（参数索引）或者param1，param2（第几个参数paramN）-->
+<!--    Cause: org.apache.ibatis.binding.BindingException:-->
+<!--    Parameter 'id' not found. Available parameters are [arg1, arg0, param1, param2]-->
+    <!--增删改不用写返回值类型-->
+    <update id="updateEmployee" parameterType="com.liobio.bean.Employee">
+        update t_employee
+        set employee_name = #{employee_name},
+            gender        = #{gender},
+            email         = #{email}
+        where id = #{id}
+    </update>
+    <delete id="deleteEmployeeById" parameterType="Integer">
+        delete
+        from t_employee
+        where id = #{id}
+    </delete>
+
+    <insert id="insertEmployee" parameterType="com.liobio.bean.Employee">
+        insert into t_employee(employee_name, gender, email)
+        values (#{employee_name}, #{gender}, #{email})
+    </insert>
+</mapper>
