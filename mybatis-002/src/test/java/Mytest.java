@@ -8,6 +8,8 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author LIOBIO
@@ -38,6 +40,28 @@ public class Mytest {
             EmployeeDao employeeDaoImpl = openSession.getMapper(EmployeeDao.class);
             //4、拿到dao接口impl实现类后，调用相对于的方法即可
             Employee employee = employeeDaoImpl.getEmployeeByIdAndName(2,"廖标");
+            System.out.println(employee);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            openSession.close();
+        }
+
+    }
+    @Test
+    public void test2() throws IOException {
+        initSqlSessionFactory();
+        //2、获取和 数据库的一次会话；与getConnection()；拿到一条连接对象
+        SqlSession openSession = sqlSessionFactory.openSession();
+        try {
+            //3、使用SqlSession操作数据库，获取到dao接口的实现
+            EmployeeDao employeeDaoImpl = openSession.getMapper(EmployeeDao.class);
+            //4、拿到dao接口impl实现类后，调用相对于的方法即可
+
+            Map<String ,Object> map= new HashMap<String ,Object>();
+            map.put("id",1);
+            map.put("employee_name","admin");
+            Employee employee = employeeDaoImpl.getEmployeeByIdAndNameWithMap(map);
             System.out.println(employee);
         } catch (Exception e) {
             e.printStackTrace();

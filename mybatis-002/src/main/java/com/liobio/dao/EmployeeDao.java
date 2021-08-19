@@ -3,6 +3,8 @@ package com.liobio.dao;
 import com.liobio.bean.Employee;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.Map;
+
 /**
  * @author LIOBIO
  * @version 1.0.0
@@ -15,6 +17,8 @@ public interface EmployeeDao {
     public Employee getEmployeeById(Integer id);
 
     public Employee getEmployeeByIdAndName(@Param("id")Integer id,@Param("employee_name") String employee_name);
+
+    public Employee getEmployeeByIdAndNameWithMap( Map<String ,Object> map);
 
     public int updateEmployee(Employee employee);
 
