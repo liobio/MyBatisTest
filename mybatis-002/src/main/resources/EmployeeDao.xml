@@ -47,6 +47,23 @@
         where id = #{id} and employee_name=#{employee_name}
     </select>
 
+<!--    public List<Employee> getAllEmployee();-->
+<!--    resultType="":如果返回的是集合，写的是集合里面元素的类型-->
+    <select id="getAllEmployee" resultType="com.liobio.bean.Employee">
+        select *
+        from t_employee
+    </select>
+
+    <!--resultType属性中的map已经被mybatis自动写入别名为map了
+    列名作为key,值作为value-->
+    <select id="getEmployeeByIdReturnMap" resultType="map">
+        select * from t_employee where id = #{id}
+    </select>
+
+    <!--查询多个的情况下，resultType属性写value封装的元素类型-->
+    <select id="getAllEmployeeByIdReturnMap" resultType="com.liobio.bean.Employee">
+        select * from t_employee
+    </select>
 
     <!--增删改不用写返回值类型-->
     <update id="updateEmployee" parameterType="com.liobio.bean.Employee">

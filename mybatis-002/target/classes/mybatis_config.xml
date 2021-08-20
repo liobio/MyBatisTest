@@ -28,5 +28,6 @@
     <mappers>
         <!--    resource属性：引入xml实现文件的位置-->
         <mapper resource="EmployeeDao.xml"/>
+        <mapper resource="BossDao.xml"/>
     </mappers>
 </configuration>

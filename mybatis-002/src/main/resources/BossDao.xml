@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liobio.dao.BossDao">
+    <!--    public Boss getBossById(Integer id);-->
+    <!--    使用默认规则;属性列名一一对应-->
+    <select id="getBossById" resultType="com.liobio.bean.Boss">
+        select *
+        from t_boss
+        where id = #{id}
+    </select>
+    <!--    Boss{id=1, bName='null', bAge=null, bGender=null}-->
+
+    <!--  自己定义每一列数据和javaBean的映射规则-->
+    <resultMap id="MyBoss" type="com.liobio.bean.Boss">
+        <!--    指定主键列的对应规则;-->
+        <!--    column=  :指定哪一列是主键列 -->
+        <!--    property :指定哪个属性封装id这一列数据-->
+        <id property="id" column="id"></id>
+
+        <!--    普通列-->
+        <result property="bName" column="bossName"/>
+        <result property="bAge" column="bossAge"/>
+        <result property="bGender" column="bossGender"/>
+    </resultMap>
+    <!--    查出数据封装结果的时候，使用resultMap自定义的规则-->
+    <select id="getBossByIdWithResultMap" resultMap="MyBoss">
+        select *
+        from t_boss
+        where id = #{id}
+    </select>
+    <!--    Boss{id=1, bName='qwe', bAge=12, bGender=1}-->
+
+</mapper>

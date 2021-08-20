@@ -680,13 +680,11 @@ VALUES(#{id},#{empName},#gender,,#{email})
 
 ### key/属性名
 
-​		#{key }取值的时候可以设置一些规则:
-​		id=#{id, jdbcType=INT};
-​		javaType、jdbcType、mode、numericScale、resultMap、typeHandler、jdbc
-​		只有jdbcType才可能是需要被指定的;
-​		默认不指定jdbcType; mysql没问题; oracle没问题;
-​		万一传入的数据是null;
-​		mysql插入null没问题; [oracle不知道nu11到底是什么类型; ]
+#{key }取值的时候可以设置一些规则:
+id=#{id, jdbcType=INT};
+javaType、jdbcType、mode、numericScale、resultMap、typeHandler、jdbc
+只有jdbcType才可能是需要被指定的;默认不指定jdbcType; mysql没问题; oracle没问题;
+万一传入的数据是null;mysql插入null没问题; oracle不知道nu11到底是什么类型; 
 
 参数也可以指定一个特殊的数据类型:
 *#{property,javaType= int , jdbcType=NUMERIC}*
@@ -695,6 +693,166 @@ VALUES(#{id},#{empName},#gender,,#{email})
 
 **如果null被当作值来传递，对于所有可能为空的列,jdbcType 需要被设置**
 
--对于数值类型，还可以设置小数点后保留的位数:
+对于数值类型，还可以设置小数点后保留的位数:
 
 **mode属性**允许指定IN, OUT或INOUT参数。如果参数为OUT或INOUT,参数对象属性的真实值将会被改变,就像在获取输出参数时所期望的那样。
+
+### #{ }和￥{ }的区别
+
+实际上在mybatis中:两种取值方式: 
+#{属性名}:是参数预编译的方式，参数的位置都是用?替代，参数后来都是预编译设置进去的;安全，不会有sql注入
+${属性名}:不是参数预编译，而是直接和sql语句进行拼串;不安全: 
+
+一般都是使用#{}，安全，在不支持参数预编译的位置要进行取值就使用${ }	
+
+### 查询返回集合
+
+dao.java
+
+```java
+ public List<Employee> getAllEmployee();
+```
+
+dao.xml
+
+```xml
+<!--    public List<Employee> getAllEmployee();-->
+<!--    resultType="":如果返回的是集合，写的是集合里面元素的类型-->
+    <select id="getAllEmployee" resultType="com.liobio.bean.Employee">
+        select *
+        from t_employee
+    </select>
+```
+
+test.java
+
+```java
+   public void test3() throws IOException {
+        initSqlSessionFactory();
+        //2、获取和 数据库的一次会话；与getConnection()；拿到一条连接对象
+        SqlSession openSession = sqlSessionFactory.openSession();
+        try {
+            //3、使用SqlSession操作数据库，获取到dao接口的实现
+            EmployeeDao employeeDaoImpl = openSession.getMapper(EmployeeDao.class);
+            //4、拿到dao接口impl实现类后，调用相对于的方法即可
+            List<Employee>  employee = employeeDaoImpl.getAllEmployee();
+            for (Employee allemployee: employee
+                 ) {
+                System.out.println(allemployee);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            openSession.close();
+        }
+    }
+```
+
+
+
+### 查询返回Map
+
+#### 单条记录返回Map
+
+dao.java
+
+```java
+public interface EmployeeDao {
+    /****
+     *  列名为Key，值为value
+     */
+    public Map<String,Object> getEmpByIdReturnMap(Integer id);
+}
+```
+
+dao.xml
+
+```xml
+<!--resultType属性中的map已经被mybatis自动写入别名为map了
+列名作为key,值作为value-->
+<select id="getEmpByIdReturnMap" resultType="map">
+    select * from t_employee where id = #{id}
+</select>
+```
+
+test.java
+
+```java
+public void test4() throws IOException {
+        initSqlSessionFactory();
+        //2、获取和 数据库的一次会话；与getConnection()；拿到一条连接对象
+        SqlSession openSession = sqlSessionFactory.openSession();
+        try {
+            //3、使用SqlSession操作数据库，获取到dao接口的实现
+            EmployeeDao employeeDaoImpl = openSession.getMapper(EmployeeDao.class);
+            //4、拿到dao接口impl实现类后，调用相对于的方法即可
+            Map<String, Object> employeeByIdReturnMap = employeeDaoImpl.getEmployeeByIdReturnMap(1);
+            System.out.println(employeeByIdReturnMap);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            openSession.close();
+        }
+    }
+```
+
+
+
+#### 多条记录返回Map
+
+通过@MapKey()注解来告诉mybatis数据库中哪个字段作为key主键来，封装value
+
+dao.java
+
+```java
+public interface EmployeeDao {
+    //key是记录的主键，value就是记录封装好的对象
+    //@MapKey根据数据库里面的哪个字段作为key来查询封装value
+    @MapKey("id")
+    public Map<Integer,Employee> getEmpsByIdReturnMap();
+}
+```
+
+dao.xml
+
+```xml
+<!--查询多个的情况下，resultType属性写value封装的元素类型-->
+<select id="getEmpsByIdReturnMap" resultType="com.liobio.bean.Employee">
+    select * from t_employee
+</select>
+```
+
+test.java
+
+```java
+    @Test
+    public void test5() throws IOException {
+        initSqlSessionFactory();
+        //2、获取和 数据库的一次会话；与getConnection()；拿到一条连接对象
+        SqlSession openSession = sqlSessionFactory.openSession();
+        try {
+            //3、使用SqlSession操作数据库，获取到dao接口的实现
+            EmployeeDao employeeDaoImpl = openSession.getMapper(EmployeeDao.class);
+            //4、拿到dao接口impl实现类后，调用相对于的方法即可
+
+            Map<Integer, Employee> allEmployeeByIdReturnMap = employeeDaoImpl.getAllEmployeeByIdReturnMap();
+            System.out.println(allEmployeeByIdReturnMap);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            openSession.close();
+        }
+    }
+```
+
+#### 自定义封装规则resultMap
+
+1. resultMap标签自定义封装
+   1. type属性：指定引入哪个javabaen与数据库封装对应
+   2. id属性：指定这个自定义封装的id，便于其他引用
+      1. id标签：指定主键
+      2. result标签：指定其他封装对象
+         1. property属性：指定javabean属性名
+         2. column属性：指定数据库字段名
+            
+
