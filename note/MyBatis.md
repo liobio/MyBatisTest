@@ -315,3 +315,36 @@ public class EmployeeTest {
 > SqlSessionFactory：创建SqlSession对象，Factory只new一次就行
 >
 > SqlSession：相当于connection，是和数据库进行交互的，也是一次和数据库的一次会话，就应该创建一个新的的SqlSession，一次与数据库连接，就创建一次会话
+
+# 三、全局配置文件
+
+**实例：**
+
+
+
+mybatis_config.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/mybatis_achang"/>
+                <property name="username" value="root"/>
+                <property name="password" value="00000"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <mappers>
+        <mapper resource="EmployeeDao.xml"/>
+    </mappers>
+</configuration>
+
+```
