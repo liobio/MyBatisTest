@@ -320,8 +320,6 @@ public class EmployeeTest {
 
 **实例：**
 
-
-
 mybatis_config.xml
 
 ```xml
@@ -348,3 +346,355 @@ mybatis_config.xml
 </configuration>
 
 ```
+
+MyBatis 的配置文件包含了会深深影响 MyBatis 行为的设置和属性信息
+
+且配置文档的结构有规定先后顺序
+
+```dtd
+<!ELEMENT configuration (properties?, settings?, typeAliases?, typeHandlers?, objectFactory?, objectWrapperFactory?, reflectorFactory?, plugins?, environments?, databaseIdProvider?, mappers?)>
+```
+
+![image-20210819215140656](C:\Users\LIOBIO\AppData\Roaming\Typora\typora-user-images\image-20210819215140656.png)
+
+## 1、properties（属性）
+
+作用：通过properties标签引入外部内容
+
+properties标签：和Spring的context：property-placeholder；引用外部配置文件
+resource属性：从类路径下引入
+url属性：引用磁盘路径或网络路径
+
+dbconfig.properties：
+
+```properties
+username=root
+password=123456
+url=jdbc:mysql://localhost:3306/mybatis
+driver=com.mysql.jdbc.Driver
+```
+
+mybatis_config.xml
+
+通过${ }动态取出配置文件中的内容
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <properties resource="dbconfig.properties"/>
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <!--${}取出配置文件中的值-->
+                <property name="driver" value="${driver}"/>
+                <property name="url" value="${url}"/>
+                <property name="username" value="${username}"/>
+                <property name="password" value="${password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <mappers>
+        <mapper resource="EmployeeDao.xml"/>
+    </mappers>
+
+</configuration>
+
+```
+
+## 2、settings（设置）
+
+settings是 MyBatis 中极为重要的调整设置，它们会改变 MyBatis 的运行时行为。
+
+| 设置名                   | 描述                                                         | 有效值        | 默认值 |
+| ------------------------ | ------------------------------------------------------------ | ------------- | ------ |
+| mapUnderscoreToCamelCase | 是否开启驼峰命名自动映射，即从经典数据库列名 A_COLUMN 映射到经典 Java 属性名 aColumn。 | true \| false | False  |
+
+```xml
+<configuration>
+    <settings>
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+    </settings>
+</configuration>
+```
+
+3、typeAliases（类型别名）
+推荐还是使用全类名!!!
+
+类型别名：为常用的类型起别名
+        typeAlias属性：就是为一个javaBean起别名；别名默认就是类名（不区分大小写），配置文件中就可以用别名了
+                alias属性：指定一个别名
+        package属性：批量起别名
+                name属性：指定一个包名，默认别名就是类名
+                @alias()注解:起别名
+
+```xml
+<typeAliases>
+    <typeAlias type="com.liobio.bean.Employee" alias="emp"/>//起别名
+    <package name="com.liobio.bean"/>//批量起别名
+</typeAliases>
+```
+
+常见的 Java 类型内建的类型别名。它们都是不区分大小写的，为了应对原始类型的命名重复，采取了特殊的命名风格。
+
+| 别名       | 映射的类型 |
+| :--------- | :--------- |
+| _byte      | byte       |
+| _long      | long       |
+| _short     | short      |
+| _int       | int        |
+| _integer   | int        |
+| _double    | double     |
+| _float     | float      |
+| _boolean   | boolean    |
+| string     | String     |
+| byte       | Byte       |
+| long       | Long       |
+| short      | Short      |
+| int        | Integer    |
+| integer    | Integer    |
+| double     | Double     |
+| float      | Float      |
+| boolean    | Boolean    |
+| date       | Date       |
+| decimal    | BigDecimal |
+| bigdecimal | BigDecimal |
+| object     | Object     |
+| map        | Map        |
+| hashmap    | HashMap    |
+| list       | List       |
+| arraylist  | ArrayList  |
+| collection | Collection |
+| iterator   | Iterator   |
+
+## 5、plugins（插件）
+
+插件是MyBatis提供的一个非常强大的机制，我们可以通过插件来修改MyBatis的一些核心行为。插件通过动态代理机制，可以介入四大对象的任何一个方法的执行。
+•Executor (update, query, flushStatements, commit, rollback, getTransaction, close, isClosed)
+
+•ParameterHandler (getParameterObject, setParameters)
+
+•ResultSetHandler (handleResultSets, handleOutputParameters)
+
+•StatementHandler (prepare, parameterize, batch, update, query)
+
+
+## 6、environments（环境）
+
+default属性：默认使用哪个环境；填写某个environment标签的id
+environment标签：配置一个具体的环境；每一个环境都需要一个事务管理器和数据源
+	id属性：当前环境的唯一标识
+	transactionManager标签：事务管理器后来数据源、事务控制管理都Spring来做
+
+```xml
+<environments default="development">
+    <environment id="development">
+        <transactionManager type="JDBC"/>
+        <dataSource type="POOLED">
+            <!--${}取出配置文件中的值-->
+            <property name="driver" value="${driver}"/>
+            <property name="url" value="${url}"/>
+            <property name="username" value="${username}"/>
+            <property name="password" value="${password}"/>
+        </dataSource>
+    </environment>
+</environments>
+
+```
+
+## 7、databaseIdProvider（数据库厂商标识）
+
+作用：mybatis用来考虑数据库移植性的-
+
+name属性：数据库厂商标识  
+value属性：给数据库厂商标识起别名 MYSQL、Oracle、SQL Server；
+	
+
+mybatis_config.xml
+
+```xml
+<databaseIdProvider type="DB_VENDOR">
+    <property name="MYSQL" value="mysql"/>
+    <property name="SQL Server" value="sqlserver"/>
+    <property name="Oracle" value="oracle"/>
+</databaseIdProvider>
+
+```
+
+EmployeeDao.xml
+
+databaseId属性：选择数据库厂商别名
+
+```xml
+<!--能精确匹配就精确匹配，不能就模糊匹配-->
+<select id="getEmpById" resultType="com.liobio.bean.bean.Employee">
+    select * from t_employee where id = #{id}
+</select>
+<select id="getEmpById" resultType="com.liobio.bean.Employee" databaseId="mysql">
+    select * from t_employee where id = #{id}
+</select>
+<select id="getEmpById" resultType="com.liobio.bean.Employee" databaseId="oracle">
+    select * from t_employee where id = #{id}
+</select>
+```
+
+## 8.mappers（映射器）
+
+既然 MyBatis 的行为已经由上述元素配置完了，我们现在就要来定义 SQL 映射语句了。 但首先，我们需要告诉 MyBatis 到哪里去找到这些语句。 在自动查找资源方面，Java 并没有提供一个很好的解决方案，所以最好的办法是直接告诉 MyBatis 到哪里去找映射文件。 你可以使用相对于类路径的资源引用，或完全限定资源定位符（包括 `file:///` 形式的 URL），或类名和包名等。
+
+class属性：引用接口全类名,可以将xml和dao接口放在同一个文件目录下，并文件名和接口名相同
+             resource属性：在类路径下找sql映射文件
+             url属性：从磁盘和网络路径引用sql映射文件
+    						配合使用：重要的dao写配置；简单的用头注解搞定
+package标签：批量注册；要求xml和dao类接口在同一个文件夹下且名字相同（可以使用设置资源文件）
+
+name属性：dao所在的包名
+
+例如：
+
+```xml
+<!-- 使用相对于类路径的资源引用 -->
+<mappers>
+  <mapper resource="org/mybatis/builder/AuthorMapper.xml"/>
+  <mapper resource="org/mybatis/builder/BlogMapper.xml"/>
+  <mapper resource="org/mybatis/builder/PostMapper.xml"/>
+</mappers>
+<!-- 使用完全限定资源定位符（URL） -->
+<mappers>
+  <mapper url="file:///var/mappers/AuthorMapper.xml"/>
+  <mapper url="file:///var/mappers/BlogMapper.xml"/>
+  <mapper url="file:///var/mappers/PostMapper.xml"/>
+</mappers>
+<!-- 使用映射器接口实现类的完全限定类名 -->
+<mappers>
+  <mapper class="org.mybatis.builder.AuthorMapper"/>
+  <mapper class="org.mybatis.builder.BlogMapper"/>
+  <mapper class="org.mybatis.builder.PostMapper"/>
+</mappers>
+<!-- 将包内的映射器接口实现全部注册为映射器 -->
+<mappers>
+  <package name="org.mybatis.builder"/>
+</mappers>
+```
+
+# 二、SQL映射文件
+
+SQL 映射文件只有很少的几个顶级元素（按照应被定义的顺序列出）：
+
+- `cache` – 该命名空间的缓存配置。
+- `cache-ref` – 引用其它命名空间的缓存配置。
+- `resultMap` – 描述如何从数据库结果集中加载对象，是最复杂也是最强大的元素。
+- `parameterMap` – 老式风格的参数映射。此元素已被废弃，并可能在将来被移除！请使用行内参数映射。文档中不会介绍此元素。
+- `sql` – 可被其它语句引用的可重用语句块。
+- `insert` – 映射插入语句。
+- `update` – 映射更新语句。
+- `delete` – 映射删除语句。
+- `select` – 映射查询语句。
+
+## 1、增删改标签
+
+> —insert – 映射插入语句
+> —update – 映射更新语句
+> —delete – 映射删除语句
+
+**id要对应实现的方法名**
+
+```xml
+<select id="getEmpById" resultType="com.liobio.bean.Employee" >
+    select * from t_employee where id = #{id}
+</select>
+```
+
+![image-20210820214336989](image-20210820214336989.png)
+
+**数据库支持主键**：
+
+dao.xml
+
+```xml
+</select>
+<!--让MyBatis自动的将自增的id赋值给传入的employee对象的id属性
+        useGeneratedKeys属性：开启自动赋值id功能
+        keyProperty属性：将刚才自增的id封装给那个属性
+-->
+<insert id="insertEmp" useGeneratedKeys="true" keyProperty="id">
+    insert into t_employee(empname,gender,email)values(#{empName},#{gender},#{email})
+</insert>
+
+```
+
+**数据库不支持主键：selectKey**
+
+![image-20210820214311683](image-20210820214311683.png)
+
+```xml
+<!--查询主键
+order="BEFORE":
+在核心Sq1语句之前先运行一个查询sq1查到id; 将查到的i d赋值给javaBe
+-->
+<selectKey order= "BEFORE" resultType="integerl" keyPrselect ="id">
+         select max(id)+1 from t_ employee
+</selectKey>
+INSERT INTO t_ employee( id , empname , gender, email)
+VALUES(#{id},#{empName},#gender,,#{email})
+
+
+```
+
+通过order属性设置运行顺序，keyProperty属性来设置查询后结果赋值给javabean的哪个对象
+
+然后通过useGeneratedKeys属性设置打开获取主键，keyProperty属性设置javabean的id属性接收结果值
+
+```xml
+<insert id="insertEmployee" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO t_ employee( empname, gender , email)
+    VALUES(#{empName} , #{gender}, #{emai1})
+</insert>                                                                     
+
+```
+
+## 2、参数（Parameters）传递
+
+> 1、单个参数
+> 	基本类型：
+> 		取值：#{随便写}
+> 2、多个参数：
+> 		取值：#{参数名}是无效的的
+> 			0,1（参数索引）或者param1，param2（第几个参数paramN）
+> 	原因：
+> 		只要传入多个参数，mybatis会自动的将这些参数封装到一个map中；封装时使用的key就是参数的索引和参数的第几个标识
+> 		@param：为参数指定封装map时的key；命名参数
+> 		我们可以告诉mybatis，封装参数map的时候别乱来
+> 3、传入map
+> 		封装多个参数为map，直接传递
+> 4、传入bean
+> 		取值：#{bean属性名}
+
+## 3、参数处理
+
+无论传入什么参数都要能正确的取出值;
+
+### key/属性名
+
+​		#{key }取值的时候可以设置一些规则:
+​		id=#{id, jdbcType=INT};
+​		javaType、jdbcType、mode、numericScale、resultMap、typeHandler、jdbc
+​		只有jdbcType才可能是需要被指定的;
+​		默认不指定jdbcType; mysql没问题; oracle没问题;
+​		万一传入的数据是null;
+​		mysql插入null没问题; [oracle不知道nu11到底是什么类型; ]
+
+参数也可以指定一个特殊的数据类型:
+*#{property,javaType= int , jdbcType=NUMERIC}*
+*#{height , javaType=double, jdbcType=NUMERIC, numericScale=2}*
+**javaType**通常可以从参数对象中来去确定
+
+**如果null被当作值来传递，对于所有可能为空的列,jdbcType 需要被设置**
+
+-对于数值类型，还可以设置小数点后保留的位数:
+
+**mode属性**允许指定IN, OUT或INOUT参数。如果参数为OUT或INOUT,参数对象属性的真实值将会被改变,就像在获取输出参数时所期望的那样。
