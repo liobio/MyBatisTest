@@ -581,7 +581,7 @@ name属性：dao所在的包名
 </mappers>
 ```
 
-# 二、SQL映射文件
+# 四、SQL映射文件
 
 SQL 映射文件只有很少的几个顶级元素（按照应被定义的顺序列出）：
 
@@ -854,5 +854,367 @@ test.java
       2. result标签：指定其他封装对象
          1. property属性：指定javabean属性名
          2. column属性：指定数据库字段名
-            
 
+​	
+
+数据库表
+
+![image-20210821001135614](image-20210821001135614.png)
+
+Boss.java
+
+```java
+public class Boss {
+    private Integer id;
+    private String bName;
+    private Integer bAge;
+    private Integer bGender;
+    }
+```
+
+BossDao.xml
+
+```xml
+<!--  自己定义每一列数据和javaBean的映射规则-->
+<resultMap id="MyBoss" type="com.liobio.bean.Boss">
+    <!--    指定主键列的对应规则;-->
+    <!--    column=  :指定哪一列是主键列 -->
+    <!--    property :指定哪个属性封装id这一列数据-->
+    <id property="id" column="id"></id>
+
+    <!--    普通列-->
+    <result property="bName" column="bossName"/>
+    <result property="bAge" column="bossAge"/>
+    <result property="bGender" column="bossGender"/>
+</resultMap>
+<!--    查出数据封装结果的时候，使用resultMap自定义的规则-->
+<select id="getBossByIdWithResultMap" resultMap="MyBoss">
+    select *
+    from t_boss
+    where id = #{id}
+</select>
+<!--    Boss{id=1, bName='qwe', bAge=12, bGender=1}-->
+```
+
+## 4、联合查询
+
+### 1、级联查询
+
+sql语句
+
+```sql
+SELECT k.id,k.`keyname`,k.`lockId`,l.`id` lid,l.`lockName` 
+FROM t_key k 
+LEFT JOIN t_lock l 
+ON k.`lockId`=l.`id`
+WHERE k.`id`=1
+```
+
+![image-20210821160754543](image-20210821160754543.png)
+
+bean.key lock对象
+
+```java
+public class Lock {
+    private Integer id;//锁编号
+    private String LockName;//锁名
+    //省略get/set/toString/构造器
+}
+
+public class Key {
+    private Integer id;//钥匙编号
+    private String keyName;//钥匙名
+    private Lock lock;//当前钥匙能开哪把锁
+    //省略get/set/toString/构造器
+}
+
+```
+
+keyDao
+
+```java
+public interface keyDao {
+//将钥匙和锁信息一起查出
+    public Key getKeyById(Integer id);
+}
+```
+
+KeyDao.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liobio.dao.keyDao">
+    <select id="getKeyById" resultMap="myKey">
+        select k.id,k.`keyname`,k.`lockId`,l.`id` lid,l.`lockName` from t_key k left join t_lock l on k.`lockId`=l.`id`where k.`id`=1
+    </select>
+    <!--自定义封装规则-->
+    <resultMap id="myKey" type="com.liobio.bean.Key">
+        <id column="id" property="id"/>
+        <result column="keyname" property="keyName"/>
+        <!--级联配置查询-->
+        <result column="lid" property="lock.id"/>
+        <result column="lock.LockName" property="lockName"/>
+    </resultMap>
+</mapper>
+
+```
+
+test.java
+
+```java
+public class EmployeeDaoTest {
+    SqlSessionFactory factory;
+    @Before
+    public void initSqlSessionFactory() throws IOException {
+        String resource = "mybatis_config.xml";
+        InputStream inputStream = Resources.getResourceAsStream(resource);
+        factory = new SqlSessionFactoryBuilder().build(inputStream);
+    }
+
+    //keyDao测试
+    @Test
+    public void test6(){
+        SqlSession sqlSession = factory.openSession();
+        keyDao mapper = sqlSession.getMapper(keyDao.class);
+        Key keyById = mapper.getKeyById(2);
+        System.out.println(keyById);
+        //Key{id=1, keyName='1号钥匙', lock=Lock{id=1, LockName='null'}}
+    }
+}
+
+```
+
+### 2、联合查询association
+
+KeyDao.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liobio.dao.keyDao">
+    <select id="getKeyById" resultMap="myKey">
+        select k.id,k.`keyname`,k.`lockId`,l.`id` lid,l.`lockName` from t_key k left join t_lock l on k.`lockId`=l.`id`where k.`id`=#{id}
+    </select>
+    <resultMap id="myKey" type="com.liobio.bean.Key">
+        <id column="id" property="id"/>
+        <result column="keyname" property="keyName"/>
+        <!--若这个对象的属性是一个对象，自定义规则；可使用association标签定义联合查询
+
+         private Integer id;//钥匙编号
+         private String keyName;//钥匙名
+         private Lock lock;//当前钥匙能开哪把锁
+
+                property属性：指定要联合查询的对象
+                javaType属性：指定这个javabean属性的类型的全类名
+        -->
+
+        <association property="lock" javaType="com.liobio.bean.Lock">
+            <!--定义lock属性对于这个Lock对象如何封装
+                property属性：指定对于javabean对象的属性
+                column属性：指定数据库查询结果的字段名
+            -->
+            <id property="id" column="id"></id>
+            <result property="LockName" column="lockName"></result>
+        </association>
+    </resultMap>
+</mapper>
+
+```
+
+test.java
+
+```java
+public class EmployeeDaoTest {
+    SqlSessionFactory factory;
+    @Before
+    public void initSqlSessionFactory() throws IOException {
+        String resource = "mybatis_config.xml";
+        InputStream inputStream = Resources.getResourceAsStream(resource);
+        factory = new SqlSessionFactoryBuilder().build(inputStream);
+    }
+
+    //keyDao测试
+    @Test
+    public void test6(){
+        SqlSession sqlSession = factory.openSession();
+        keyDao mapper = sqlSession.getMapper(keyDao.class);
+        Key keyById = mapper.getKeyById(2);
+        System.out.println(keyById);
+        //Key{id=1, keyName='1号钥匙', lock=Lock{id=1, LockName='1号锁'}}
+    }
+}
+
+```
+
+### 3、Collection查询
+
+sql语句
+
+```sql
+SELECT k.id,k.`keyname`,k.`lockId`,l.`id` lid,l.`lockName` 
+FROM t_key k 
+LEFT JOIN t_lock l 
+ON k.`lockId`=l.`id`
+WHERE k.`id`=3
+```
+
+bean对象
+
+```java
+public class Lock {
+    private Integer id;//锁编号
+    private String LockName;//锁名
+    private List<Key> keys//很多把钥匙可以开这把锁
+    //省略get/set/toString/构造器
+}
+public class Key {
+    private Integer id;//钥匙编号
+    private String keyName;//钥匙名
+    private Lock lock;//当前钥匙能开哪把锁
+    //省略get/set/toString/构造器
+}
+
+```
+
+LockDao.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liobio.dao.LockDao">
+    <select id="getLockById" resultMap="myLock">
+        select k.kid,k.`keyname`,k.`lockId`,l.`id` id,l.`lockName` from t_key k left join t_lock l on k.`lockId`=l.`id`where k.`id`=#{id}
+    </select>
+    
+    <resultMap id="myLock" type="com.liobio.bean.Lock">
+        <id column="id" property="id"/>
+        <result column="keyname" property="keyName"/>
+        <!-- 
+		collection：定义集合元素的封装
+			property：指定bean对象属性中哪个集合对象
+			ofType：指定bean对象属性的对象集合里面元素的类型
+		-->
+        <collection property="keys" ofType="com.liobio.bean.Key">
+            <id property="id" column="kid"></id>
+            <result property="keyName" column="keyname"></result>
+        </collection>
+    </resultMap>
+    
+</mapper>
+
+```
+
+test.java
+
+```java
+public class EmployeeDaoTest {
+    SqlSessionFactory factory;
+    @Before
+    public void initSqlSessionFactory() throws IOException {
+        String resource = "mybatis_config.xml";
+        InputStream inputStream = Resources.getResourceAsStream(resource);
+        factory = new SqlSessionFactoryBuilder().build(inputStream);
+    }
+
+    //LockDao测试
+    @Test
+    public void test7(){
+        SqlSession sqlSession = factory.openSession();
+        keyDao mapper = sqlSession.getMapper(keyDao.class);
+        Lock lockById = mapper.getLockById(3);
+        System.out.println(keyById);
+        //lock对象为null是因为没自定义配置association；需要则可以在resultMap中继续配置association来继续套娃
+        //Key{id=3, keyName='303号钥匙1', lock=null}
+       // Key{id=4, keyName='303号钥匙2', lock=null}
+       // Key{id=5, keyName='303号钥匙3', lock=null}
+    }
+}
+
+```
+
+## 5、分步查询【不推荐】
+
+虽然sql简单，但是会有大量性能浪费，虽然可以用过设置来减少性能浪费，但还是不推荐使用
+
+### 1、association-分段查询
+
+```xml
+<resultMap type="com.liobio.bean.Lock" id= "myLock3">
+	<id column="id" property="id"/>
+	<result column="LockName"property="LockName "/>
+	<association property="key
+		select="com.liobio.dao.KeyMapper.getKeyById”
+		column="key_id">
+	</ association>
+</resultMap>
+
+```
+
+select：调用目标的方法查询当前属性的值【方法全类名】
+
+column：将指定字段值传入select属性调用的目标方法中
+
+### 2、association-分段查询&延迟加载
+
+开启延迟加载和属性按需加载
+
+```xml
+<settings>
+	<setting name= "LazyLoadingEnabLed" value="true"/>
+	<setting name="aggressiveLazyLoading" value="faLse"/>
+</settings>
+```
+
+### 3、Collection-集合类型&嵌套结果集
+
+```xml
+<select id="getDeptById" resultMap= "MyDept">
+	SELECT d.id d_id,d.dept_name d_deptName, 
+	e.id e_id,e.last_name e_lastName,e.email e_email,
+	e.gender e_gender,e.dept_ id e_deptId
+	FROM department d
+	LEFT JOIN employee e ON e.'dept_id'='d.id'
+	WHERE d.'id'=#{id}
+</select>
+
+```
+
+```xml
+<resultMap type= "com.liobio.bean.Department"id= "MyDept">
+	<id column= "d_id" property="id"/>
+	<result column= "d_ deptName" property= "deptName"/ >
+	<collection property= "emps" ofType= "com.liobio.bean.EmpLoyee"
+		columnPrefix="e_">
+		<id column= "id" property="id"/>
+		<result column= "LastName" property= "LastName "/ >
+		<result column= "email" property= "email"/>
+		<result column= "gender" property= "gender"/ >
+	</collection>
+</ resultMap>
+
+```
+
+### 4、Collection-分步查询&延迟加载
+
+```xml
+<resultMap type= "com.atguigu.bean.Department" id= "MyDeptStep">
+	<id column= "id" property= "id"/>
+	<result column= "dept_ name" property= "deptName"/>
+	<collection property= "emps"
+		select="com.atguigu.dao.EmpLoyeeMapper.getEmpsByDeptId"
+		column="id">
+	</collection>
+</resultMap>
+
+```
+
+# 五，动态SQL
+
+![image-20210821230424769](image-20210821230424769.png)

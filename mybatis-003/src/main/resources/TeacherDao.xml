@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liobio.dao.TeacherDao">
+
+    <resultMap id="teacherMap" type="com.liobio.bean.Teacher">
+        <id property="id" column="id"/>
+        <result property="name" column="teacher_name"/>
+        <result property="course" column="course"/>
+        <result property="address" column="address"/>
+        <result property="birth" column="birth_date"/>
+    </resultMap>
+
+    <select id="getTeacherById" resultMap="teacherMap">
+        SELECT *
+        FROM t_teacher
+        WHERE id = #{id}
+    </select>
+
+    <!--     public List<Teacher> getTeacherByCondition(Teacher teacher);-->
+    <select id="getTeacherByCondition" resultMap="teacherMap">
+        SELECT * FROM t_teacher
+        <!--test属性：指定编写判断条件
+            id!=null：取出传入的javabean属性中id的值，判断其是否为空
+        -->
+        <!--where标签：可以帮我们去除掉前面的and-->
+        <!--        <where>-->
+        <!--            <if test="id!=null">-->
+        <!--                And id > #{id}-->
+        <!--            </if>-->
+        <!--            <if test="name!=null and !name.equals(&quot;&quot;)">-->
+        <!--                AND teacher_name like #{name}-->
+        <!--            </if>-->
+        <!--            <if test="address!=null and !address.equals(&quot;&quot;)">-->
+        <!--                AND address like #{address}-->
+        <!--            </if>-->
+        <!--        </where>-->
+
+        <!--截取字符串
+        prefix属性：为下面的sql整体添加一个前缀
+        prefixOverrides属性：取出整体字符串钱多多余的字符
+        suffix：为整体添加一个后缀
+        suffixOverrides：后面哪个多了可以去掉
+        -->
+        <trim prefix="where" prefixOverrides="AND | OR">
+            <if test="id!=null">
+                And id > #{id}
+            </if>
+            <if test="name!=null and !name.equals(&quot;&quot;)">
+                AND teacher_name like #{name}
+            </if>
+            <if test="address!=null and !address.equals(&quot;&quot;)">
+                AND address like #{address}
+            </if>
+        </trim>
+    </select>
+
+    <select id="getTeacherByIdIn" resultMap="teacherMap">
+        SELECT * FROM t_teacher WHERE id IN
+        <!--foreach遍历集合
+            collection属性：指定要遍历集合的key
+            close属性：以书什么结束
+            item属性：每次遍历的元素，命名任意，方便引用
+            index属性：
+                如果遍历的是一个list，指定变量保存的当前元素的索引
+                    item为值
+                如果遍历的是一个map，指定变量保存的当前元素的key
+                    item为value值
+            open属性：以什么开始
+            separator属性：每次遍历元素的分隔符
+        -->
+        <foreach collection="ids" open="(" close=")" item="id_item"  separator=",">
+            #{id_item}
+        </foreach>
+    </select>
+
+    <select id="getTeacherByConditionChoose" resultMap="teacherMap">
+        select * from t_teacher
+        <where>
+--             when标签：设置情况；满足后其他情况跳过
+--
+--             otherwise标签：当所有都不情况都不满足时，就执行此标签
+--
+--             类似ifelse-else
+            <choose>
+                <when test="id!=null">
+                    id=#{id}
+                </when>
+                <when test="name!=null and name.equals(&quot;&quot;)">
+                    teacher_name=#{name}
+                </when>
+                <when test="address!=null and !address.equals(&quot;&quot;)">
+                    birth_date=#{address}
+                </when>
+                <otherwise>
+                    1=1
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+
+    <update id="updateTeacher">
+        UPDATE t_teacher
+        <set>
+            <if test="name!=null and !name.equals(&quot;&quot;)">
+                teacher_name=#{name},
+            </if>
+            <if test="course!=null and !course.equals(&quot;&quot;)">
+                course=#{course},
+            </if>
+            <if test="address!=null and !address.equals(&quot;&quot;)">
+                address=#{address},
+            </if>
+        </set>
+        <where>
+            id=#{id}
+        </where>
+    </update>
+
+
+
+
+</mapper>
