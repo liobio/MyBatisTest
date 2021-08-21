@@ -1217,4 +1217,478 @@ column：将指定字段值传入select属性调用的目标方法中
 
 # 五，动态SQL
 
+动态 SQL 是 MyBatis 的强大特性之一。如果你使用过 JDBC 或其它类似的框架，你应该能理解根据不同条件拼接 SQL 语句有多痛苦，例如拼接时要确保不能忘记添加必要的空格，还要注意去掉列表最后一个列名的逗号。利用动态 SQL，可以彻底摆脱这种痛苦。
+
+使用动态 SQL 并非一件易事，但借助可用于任何 SQL 映射语句中的强大的动态 SQL 语言，MyBatis 显著地提升了这一特性的易用性。
+
+如果你之前用过 JSTL 或任何基于类 XML 语言的文本处理器，你对动态 SQL 元素可能会感觉似曾相识。在 MyBatis 之前的版本中，需要花时间了解大量的元素。借助功能强大的基于 OGNL 的表达式，MyBatis 3 替换了之前的大部分元素，大大精简了元素种类，现在要学习的元素种类比原来的一半还要少。
+
+- if
+- choose (when, otherwise)
+- trim (where, set)
+- foreach
+
+bean.Teacher.java
+
+```java
+public class Teacher {
+
+    private Integer id;
+    private String name;
+    private String course;
+    private String address;
+    private Date birth;
+}
+
+```
+
+dao.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liobio.dao.TeacherDao">
+
+    <resultMap id="teacherMap" type="com.liobio.bean.Teacher">
+        <id property="id" column="id"/>
+        <result property="name" column="teacher_name"/>
+        <result property="course" column="course"/>
+        <result property="address" column="address"/>
+        <result property="birth" column="birth_date"/>
+    </resultMap>
+```
+
+
+
+## 1、if标签
+
+dao.java
+
+```java
+public List<Teacher> getTeacherByCondition(Teacher teacher);
+```
+
+dao.xml
+
+```xml
+<select id="getTeacherByCondition" resultMap="teacherMap">
+        SELECT * FROM t_teacher WHERE
+        <!--test属性：指定编写判断条件
+            id!=null：取出传入的javabean属性中id的值，判断其是否为空
+        -->
+        <if test="id!=null">
+            id > #{id} AND
+        </if>
+        <if test="name!=null and !name.equals(&quot;&quot;) ">
+            teacherName like #{name} AND
+        </if>
+        <if test="birth!=null">
+            birth_date &lt; #{birth}
+        </if>
+    </select>
+```
+
+test.java
+
+```java
+ public void test2() throws IOException {
+        initSqlSessionFactory();
+        SqlSession sqlSession = sqlSessionFactory.openSession();
+        try {
+            TeacherDao mapper = sqlSession.getMapper(TeacherDao.class);
+            Teacher teacher = new Teacher();
+            teacher.setId(1);
+            teacher.setName("%a%");
+            teacher.setAddress("%地址%");
+            List<Teacher> teacherByCondition = mapper.getTeacherByCondition(teacher);
+            for (Teacher temp:teacherByCondition){
+                System.out.println(temp);
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            sqlSession.close();
+        }
+    }
+```
+
+
+
+## 2、where标签
+
+dao.java
+
+```java
+public List<Teacher> getTeacherByCondition(Teacher teacher);
+```
+
+dao.xml
+
+```xml
+
+<select id="getTeacherByCondition" resultMap="teacherMap">
+    SELECT * FROM t_teacher
+    <!--where标签：可以帮我们去除掉前面的and-->
+    <where>
+            <if test="id!=null">
+                id > #{id}
+            </if>
+            <if test="name!=null and !name.equals(&quot;&quot;) ">
+                AND teacherName like #{name}
+            </if>
+            <if test="address!=null and !address.equals(&quot;&quot;)">-->
+                AND address like #{address}-->
+            </if>-->
+    </where>
+</select>
+```
+
+test.java
+
+```java
+ public void test2() throws IOException {
+        initSqlSessionFactory();
+        SqlSession sqlSession = sqlSessionFactory.openSession();
+        try {
+            TeacherDao mapper = sqlSession.getMapper(TeacherDao.class);
+            Teacher teacher = new Teacher();
+            teacher.setId(1);
+            teacher.setName("%a%");
+            teacher.setAddress("%地址%");
+            List<Teacher> teacherByCondition = mapper.getTeacherByCondition(teacher);
+            for (Teacher temp:teacherByCondition){
+                System.out.println(temp);
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            sqlSession.close();
+        }
+    }
+```
+
+
+
+## 3、trim标签
+
+如果 *where* 元素与你期望的不太一样，你也可以通过自定义 trim 元素来定制 *where* 元素的功能
+
+dao.java
+
+```java
+public List<Teacher> getTeacherByCondition(Teacher teacher);
+```
+
+dao.xml
+
+```xml
+<select id="getTeacherByCondition" resultMap="teacherMap">
+    SELECT * FROM t_teacher
+	<!--截取字符串
+        prefix属性：为下面的sql整体添加一个前缀
+        prefixOverrides属性：取出整体字符串钱多多余的字符
+        suffix：为整体添加一个后缀
+        suffixOverrides：后面哪个多了可以去掉
+    -->
+    <trim prefix="where" prefixOverrides="AND | OR">
+            <if test="id!=null">
+                And id > #{id}
+            </if>
+            <if test="name!=null and !name.equals(&quot;&quot;)">
+                AND teacher_name like #{name}
+            </if>
+            <if test="address!=null and !address.equals(&quot;&quot;)">
+                AND address like #{address}
+            </if>
+    </trim>
+</select>
+```
+
+test.java
+
+```java
+ public void test2() throws IOException {
+        initSqlSessionFactory();
+        SqlSession sqlSession = sqlSessionFactory.openSession();
+        try {
+            TeacherDao mapper = sqlSession.getMapper(TeacherDao.class);
+            Teacher teacher = new Teacher();
+            teacher.setId(1);
+            teacher.setName("%a%");
+            teacher.setAddress("%地址%");
+            List<Teacher> teacherByCondition = mapper.getTeacherByCondition(teacher);
+            for (Teacher temp:teacherByCondition){
+                System.out.println(temp);
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            sqlSession.close();
+        }
+    }
+```
+
+
+
+## 4、foreach遍历元素
+
+动态 SQL 的另一个常见使用场景是对集合进行遍历（尤其是在构建 IN 条件语句的时候）
+
+*foreach* 元素的功能非常强大，它允许你指定一个集合，声明可以在元素体内使用的集合项（item）和索引（index）变量。它也允许你指定开头与结尾的字符串以及集合项迭代之间的分隔符。这个元素也不会错误地添加多余的分隔符，看它多智能！
+
+**提示** 你可以将任何可迭代对象（如 List、Set 等）、Map 对象或者数组对象作为集合参数传递给 *foreach*。当使用可迭代对象或者数组时，index 是当前迭代的序号，item 的值是本次迭代获取到的元素。当使用 Map 对象（或者 Map.Entry 对象的集合）时，index 是键，item 是值。
+
+dao.java
+
+```java
+public List<Teacher> getTeacherByIdIn(@Param("ids") List<Integer> ids);
+```
+
+dao.xml
+
+```xml
+    <select id="getTeacherByIdIn" resultMap="teacherMap">
+        SELECT * FROM t_teacher WHERE id IN
+        <!--foreach遍历集合
+            collection属性：指定要遍历集合的key
+            close属性：以书什么结束
+            item属性：每次遍历的元素，命名任意，方便引用
+            index属性：
+                如果遍历的是一个list，指定变量保存的当前元素的索引
+                    item为值
+                如果遍历的是一个map，指定变量保存的当前元素的key
+                    item为value值
+            open属性：以什么开始
+            separator属性：每次遍历元素的分隔符
+        -->
+        <foreach collection="ids" open="(" close=")" item="id_item"  separator=",">
+            #{id_item}
+        </foreach>
+    </select>
+```
+
+test.java
+
+```java
+ public void test3() throws IOException {
+        initSqlSessionFactory();
+        SqlSession sqlSession = sqlSessionFactory.openSession();
+        try {
+            TeacherDao mapper = sqlSession.getMapper(TeacherDao.class);
+            List<Teacher> teacherByIdIn = mapper.getTeacherByIdIn(Arrays.asList(1,2,4));
+            for (Teacher temp:teacherByIdIn){
+                System.out.println(temp);
+                //Teacher{id=1, name='qqq', course='语文', address='地址一', birth=2021-01-01}
+                //Teacher{id=2, name='www', course='数学', address='地址二', birth=2022-02-02}
+                //Teacher{id=4, name='aaa', course='物理', address='地址四', birth=2024-04-04}
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            sqlSession.close();
+        }
+    }
+```
+
+
+
+## 5、choose标签
+
+有时候，我们不想使用所有的条件，而只是想从多个条件中选择一个使用。针对这种情况，MyBatis 提供了 choose 元素，它有点像 Java 中的 switch 语句。
+
+dao.java
+
+```java
+public List<Teacher> getTeacherByConditionChoose(Teacher teacher);
+```
+
+dao.xml
+
+```xml
+<select id="getTeacherByConditionChoose" resultMap="teacherMap">
+        select * from t_teacher
+        <where>
+--             when标签：设置情况；满足后其他情况跳过
+--
+--             otherwise标签：当所有都不情况都不满足时，就执行此标签
+--
+--             类似ifelse-else
+            <choose>
+                <when test="id!=null">
+                    id=#{id}
+                </when>
+                <when test="name!=null and name.equals(&quot;&quot;)">
+                    teacher_name=#{name}
+                </when>
+                <when test="address!=null and !address.equals(&quot;&quot;)">
+                    birth_date=#{address}
+                </when>
+                <otherwise>
+                    1=1
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+```
+
+test.java
+
+```java
+public void test4() throws IOException {
+        initSqlSessionFactory();
+        SqlSession sqlSession = sqlSessionFactory.openSession();
+        try {
+            TeacherDao mapper = sqlSession.getMapper(TeacherDao.class);
+            Teacher teacher = new Teacher();
+            teacher.setId(1);
+            teacher.setName("%a%");
+            teacher.setAddress("%地址%");
+            List<Teacher> teacherByConditionChoose = mapper.getTeacherByConditionChoose(teacher);
+            for (Teacher temp:teacherByConditionChoose){
+                System.out.println(temp);
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            sqlSession.close();
+        }
+    }
+```
+
+
+
+## 6、set标签
+
+dao.java
+
+```java
+ public int updateTeacher(Teacher teacher);
+```
+
+dao.xml
+
+```xml
+<update id="updateTeacher">
+        UPDATE t_teacher
+        <set>
+            <if test="name!=null and !name.equals(&quot;&quot;)">
+                teacher_name=#{name},
+            </if>
+            <if test="course!=null and !course.equals(&quot;&quot;)">
+                course=#{course},
+            </if>
+            <if test="address!=null and !address.equals(&quot;&quot;)">
+                address=#{address},
+            </if>
+        </set>
+        <where>
+            id=#{id}
+        </where>
+    </update>
+```
+
+test.java
+
+```java
+ public void test5() throws IOException {
+        initSqlSessionFactory();
+        SqlSession sqlSession = sqlSessionFactory.openSession(true);
+        try {
+            TeacherDao mapper = sqlSession.getMapper(TeacherDao.class);
+            Teacher teacher = new Teacher();
+            teacher.setId(1);
+            teacher.setName("liobio");
+            teacher.setAddress("home");
+            int i = mapper.updateTeacher(teacher);
+            System.out.println(i);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            sqlSession.close();
+        }
+    }
+```
+
 ![image-20210821230424769](image-20210821230424769.png)
+
+## 7、include标签
+
+dao.java
+
+```java
+public Teacher getTeacherById(Integer id);
+```
+
+dao.xml
+
+```xml
+
+<!--    抽取可重用的sql语句-->
+    <sql id="selectSql">
+        SELECT *
+        FROM t_teacher
+    </sql>
+    <select id="getTeacherById" resultMap="teacherMap">
+        <include refid="selectSql"></include>
+        WHERE id = #{id}
+    </select>
+
+```
+
+test.java
+
+```java
+    //查询
+    @Test
+    public void test1() throws IOException {
+        initSqlSessionFactory();
+        //2、获取和 数据库的一次会话；与getConnection()；拿到一条连接对象
+        SqlSession openSession = sqlSessionFactory.openSession();
+        try {
+            TeacherDao teacherDao = openSession.getMapper(TeacherDao.class);
+            Teacher teacherById = teacherDao.getTeacherById(1);
+            System.out.println(teacherById);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            openSession.close();
+        }
+    }
+```
+
+
+
+## 8、bind标签【不推荐】
+
+bind 元素可以从 OGNL 表达式中创建一个变量并将其绑定到上下文。比如：
+
+```xml
+<select id= "getEmpByLastNameLike" resultType= "com.liobio.bean.Employee">
+<bind name= "myLastName" value="'%'+_LastName+'%'"/>
+select * from employee where last_name like #{ myLastName }
+</select>
+
+```
+
+但是后期更改匹配规则麻烦
+
+## 9、OGNL表达式
+
+**OGNL**（ **Object Graph Navigation Language** ）对象图导航语言（类似级联属性）
+
+这是一种强大的表达式语言，通过它可以非常方便的来操作对象属性。类似于我们的EL，SpEL等
+
+![image-20210821234905685](image-20210821234905685.png)
+
+![image-20210821234923176](image-20210821234923176.png)
+
+
+
+
+
