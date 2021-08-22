@@ -12,9 +12,13 @@
         <result property="birth" column="birth_date"/>
     </resultMap>
 
-    <select id="getTeacherById" resultMap="teacherMap">
+<!--    抽取可重用的sql语句-->
+    <sql id="selectSql">
         SELECT *
         FROM t_teacher
+    </sql>
+    <select id="getTeacherById" resultMap="teacherMap">
+        <include refid="selectSql"></include>
         WHERE id = #{id}
     </select>
 
@@ -25,17 +29,17 @@
             id!=null：取出传入的javabean属性中id的值，判断其是否为空
         -->
         <!--where标签：可以帮我们去除掉前面的and-->
-        <!--        <where>-->
-        <!--            <if test="id!=null">-->
-        <!--                And id > #{id}-->
-        <!--            </if>-->
-        <!--            <if test="name!=null and !name.equals(&quot;&quot;)">-->
-        <!--                AND teacher_name like #{name}-->
-        <!--            </if>-->
-        <!--            <if test="address!=null and !address.equals(&quot;&quot;)">-->
-        <!--                AND address like #{address}-->
-        <!--            </if>-->
-        <!--        </where>-->
+<!--                <where>-->
+<!--                    <if test="id!=null">-->
+<!--                        And id > #{id}-->
+<!--                    </if>-->
+<!--                    <if test="name!=null and !name.equals(&quot;&quot;)">-->
+<!--                        AND teacher_name like #{name}-->
+<!--                    </if>-->
+<!--                    <if test="address!=null and !address.equals(&quot;&quot;)">-->
+<!--                        AND address like #{address}-->
+<!--                    </if>-->
+<!--                </where>-->
 
         <!--截取字符串
         prefix属性：为下面的sql整体添加一个前缀
@@ -117,8 +121,5 @@
             id=#{id}
         </where>
     </update>
-
-
-
 
 </mapper>
