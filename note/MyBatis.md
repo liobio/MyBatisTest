@@ -1215,7 +1215,7 @@ column：将指定字段值传入select属性调用的目标方法中
 
 ```
 
-# 五，动态SQL
+# 五、动态SQL
 
 动态 SQL 是 MyBatis 的强大特性之一。如果你使用过 JDBC 或其它类似的框架，你应该能理解根据不同条件拼接 SQL 语句有多痛苦，例如拼接时要确保不能忘记添加必要的空格，还要注意去掉列表最后一个列名的逗号。利用动态 SQL，可以彻底摆脱这种痛苦。
 
@@ -1690,5 +1690,354 @@ select * from employee where last_name like #{ myLastName }
 
 
 
+# 六、缓存机制
 
+MyBatis 包含一个非常强大的查询缓存特性,它可以非常方便地配置和定制。缓存可以极大的提升查询效率
+
+缓存：暂时的存储一些数据；加快系统的查询速度
+
+MyBatis系统中默认定义了两级缓存。
+
+**一级缓存**：线程级别的缓存；本地缓冲；SqlSession级别的缓存
+
+**二级缓存**：全局范围的缓存；除过当前缓冲；SqlSession能用以外其他也而已使用
+
+1、默认情况下，只有一级缓存（SqlSession级别的缓存，也称为本地缓存）开启。
+
+2、二级缓存需要手动开启和配置，他是基于namespace级别的缓存。
+
+3、为了提高扩展性。MyBatis定义了缓存接口Cache。我们可以通过实现Cache接口来自定义二级缓存
+
+## 1、一级缓存
+
+只要之前查询过的数据，mybatis就会保存在一个缓存中（Map）;下次获取直接从缓冲中拿
+
+一级缓存(local cache), 即本地缓存, 作用域默认为sqlSession。当 Session flush 或 close 后, 该 Session 中的所有 Cache 将被清空。
+
+本地缓存不能被关闭, 但可以调用 clearCache() 来清空本地缓存, 或者改变缓存的作用域.
+
+### 1、一级缓存简单使用
+
+```java
+public class DaoTest {
+    SqlSessionFactory factory;
+    @Before
+    public void initSqlSessionFactory() throws IOException {
+        String resource = "mybatis_config.xml";
+        InputStream inputStream = Resources.getResourceAsStream(resource);
+        factory = new SqlSessionFactoryBuilder().build(inputStream);
+    }
+
+    //体会一级缓存
+    @Test
+    public void test1(){
+        SqlSession sqlSession = factory.openSession();
+        Teacher teacherById;
+        try {
+            TeacherDao mapper = sqlSession.getMapper(TeacherDao.class);
+            Teacher teacher1 = mapper.getTeacherById(1);
+            System.out.println(teacher1);
+            System.out.println("====================");
+            Teacher teacher2 = mapper.getTeacherById(1);
+            System.out.println(teacher2);
+            System.out.println(teacher1==teacher2);//true
+        } finally {
+            sqlSession.commit();
+            sqlSession.close();
+        }
+    }
+
+}
+
+```
+
+```
+只发送给数据库一次数据查询，且两次获取到的数据内存地址相同
+```
+
+### 2、一级缓存失效的情况
+
+#### **a、不同的SqlSession，使用不同的一级缓存；他会存储在自己的SqlSession的Map中**
+
+> 只有在同一个SqlSession期间查询到的数据会保存到这个SqlSession中的缓存中
+>
+> 下次使用SqlSession查询会从缓存中拿
+
+```java
+    @Test
+    public void test2(){
+        //1、第一个会话
+        SqlSession sqlSession1 = factory.openSession();
+        TeacherDao teacherDao = sqlSession1.getMapper(TeacherDao.class);
+        Teacher teacher1 = teacherDao.getTeacherById(1);
+        System.out.println(teacher1);
+
+        //2、第二个会话
+        SqlSession sqlSession2 = factory.openSession();
+        TeacherDao teacherDao2 = sqlSession2.getMapper(TeacherDao.class);
+        Teacher teacher2 = teacherDao2.getTeacherById(1);
+        System.out.println(teacher2);
+
+        System.out.println(teacher1==teacher2);//false
+
+        //3、关闭两个会话
+        sqlSession1.close();
+        sqlSession2.close();
+    }
+
+```
+
+结果：
+
+```
+两次会话，分别都会想数据库发送sql语句请求查询，并判断返回结果的地址值不同
+```
+
+#### **b、同一个方法，不同的参数，由于可能之前没查询过，还会发送新的sql查询请求**
+
+```java
+@Test
+public void test2(){
+    //一次会话
+    SqlSession sqlSession1 = factory.openSession();
+    TeacherDao teacherDao = sqlSession1.getMapper(TeacherDao.class);
+    Teacher teacher1 = teacherDao.getTeacherById(1);
+    Teacher teacher2 = teacherDao.getTeacherById(2);
+    System.out.println(teacher1);
+    System.out.println(teacher2);
+    sqlSession1.close();
+}
+
+```
+
+```
+相同的sql语句，当时发送的参数不同，也会发送sql请求
+```
+
+#### **c、在这个sqlsession期间执行上任何一次增删改操作，增删改操作会把缓存清空**
+
+```java
+    @Test
+    public void test2(){
+        //1、一次会话
+        SqlSession sqlSession1 = factory.openSession();
+        TeacherDao teacherDao = sqlSession1.getMapper(TeacherDao.class);
+        Teacher teacher1 = teacherDao.getTeacherById(1);
+        System.out.println(teacher1);
+        System.out.println("=====================");
+
+        //执行任何一个增删改操作
+        Teacher teacher = new Teacher();
+        teacher.setId(3);
+        teacher.setName("刘备");
+        teacherDao.updateTeacher(teacher);
+
+
+        System.out.println("=====================");
+        Teacher teacher2 = teacherDao.getTeacherById(1);
+        System.out.println(teacher2);
+        sqlSession1.commit();
+        sqlSession1.close();
+
+    }
+
+```
+
+```
+中间的增删改数据会清空缓存
+```
+
+#### **d、手动清空一级缓存**
+
+**clearCache()**：清空当前sqlsession的一级缓存
+
+```java
+    @Test
+    public void test2(){
+        //1、一次会话
+        SqlSession sqlSession1 = factory.openSession();
+        TeacherDao teacherDao = sqlSession1.getMapper(TeacherDao.class);
+        Teacher teacher1 = teacherDao.getTeacherById(1);
+        System.out.println(teacher1);
+        System.out.println("=====================");
+
+        //手动清空缓存
+        System.out.println("手动清空缓存");
+        //clearCache()清空当前sqlsession的一级缓存
+        sqlSession1.clearCache();
+
+        System.out.println("=====================");
+        Teacher teacher2 = teacherDao.getTeacherById(1);
+        System.out.println(teacher2);
+        sqlSession1.commit();
+        sqlSession1.close();
+
+    }
+
+```
+
+每次查询，先看一级缓存中有没有相关数据，如果没有再去发送新的sql
+
+每一个sqlsession都拥有自己的一级缓存
+
+## 2、二级缓存
+
+- 二级缓存(second level cache)，全局作用域缓存
+- **二级缓存在SqlSession关闭或提交**之后才会生效
+- 二级缓存默认不开启，需要手动配置
+- MyBatis提供二级缓存的接口以及实现，缓存实现要求POJO实现Serializable接口
+
+### 1、开启二级缓存
+
+在mybatis全局配置文件中下配置
+
+```xml
+<settings>
+    <!--开启全局缓存-->
+    <setting name="cacheEnabled" value="true"/>
+</settings>
+
+```
+
+给需要使用缓存的dao功能配置
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liobio.dao.TeacherDao">
+    <!--使用二级缓存-->
+    <cache></cache>
+</mapper>
+
+```
+
+test.java
+
+```java
+    @Test
+    public void test3(){
+        SqlSession sqlSession1 = factory.openSession();
+        SqlSession sqlSession2 = factory.openSession();
+        TeacherDao teacherDao1 = sqlSession1.getMapper(TeacherDao.class);
+        TeacherDao teacherDao2 = sqlSession2.getMapper(TeacherDao.class);
+
+        //第一个dao查询1号teacher信息
+        Teacher teacherDao1TeacherById = teacherDao1.getTeacherById(1);
+        System.out.println(teacherDao1TeacherById);
+        //第二个dao查询1号teacher信息
+        Teacher teacherDao2TeacherById = teacherDao2.getTeacherById(1);
+        System.out.println(teacherDao2TeacherById);
+
+        //对比两个查询结果
+        System.out.println(teacherDao1TeacherById==teacherDao2TeacherById);//
+
+    }
+
+```
+
+### 2、**缓存的查询顺序**
+
+1. 一级缓存和二级缓存不会有同一个数据
+
+   1. 二级缓存中的数据：一级缓存关闭了就将数据放入二级缓存
+   2. 一级缓存中的数据：二级缓存中没有的数据，就会放在一级缓存，一级缓存也没有就去查数据库；查完放一级缓存中
+
+2. 任何时候都是先看二级缓存，再看一级缓存；如果大家都没有，就去查询数据库
+
+   
+
+### 3、**查询原理流程图**
+
+![image-20210822231138113](image-20210822231138113.png)
+
+每一个Dao有他自己的二级缓存，每次关闭会话后一级缓存会将数据传给当前Dao的二级缓存保存
+
+每次查询都从他的Dao中先查询二级缓存，没有就去查询这次会话的一级缓存，没有就去数据库查询
+
+## 3、缓存的设置
+
+### 1、缓存在全局xml配置属性
+
+**eviction=“FIFO：缓存回收策略：**
+
+> LRU – 最近最少使用的：移除最长时间不被使用的对象。
+>
+> FIFO – 先进先出：按对象进入缓存的顺序来移除它们。
+>
+> SOFT – 软引用：移除基于垃圾回收器状态和软引用规则的对象。
+>
+> WEAK – 弱引用：更积极地移除基于垃圾收集器状态和弱引用规则的对象。
+>
+
+> 默认的是 LRU。
+>
+
+**flushInterval：刷新间隔，单位毫秒**
+默认情况是不设置，也就是没有刷新间隔，缓存仅仅调用语句时刷新
+
+**size：引用数目，正整数**
+代表缓存最多可以存储多少个对象，太大容易导致内存溢出
+
+***eadOnly：只读，true/false**
+true：只读缓存；
+
+​	会给所有调用者返回缓存对象的相同实例。因此这些对象不能被修改。这提供了很重要的性能优势。
+
+false：读写缓存
+
+​	会返回缓存对象的拷贝（通过序列化）。这会慢一些，但是安全，因此默认是 false。
+
+### 2、缓存在dao.xml配置表标签的属性
+
+**1、全局setting的cacheEnable：**
+
+​	–配置二级缓存的开关。一级缓存一直是打开的。
+
+2、select标签的useCache属性：
+
+​	–配置这个select是否使用二级缓存。一级缓存一直是使用的
+
+**3、sql标签的flushCache属性：**
+
+​	–增删改默认flushCache=true。sql执行以后，会同时清空一级和二级缓存。查询默认flushCache=false。
+
+4、sqlSession.clearCache()：
+
+​	–只是用来清除一级缓存。
+
+**5、当在某一个作用域 (一级缓存Session/二级缓存Namespaces) 进行了 C/U/D 操作后，默认该作用域下所有 select 中的缓存将被clear。**
+
+## 4、第三方缓存整合
+
+### 1、导包
+
+​	ehcache-core-2.6.8.jar
+
+​	mybatis-ehcache-1.0.3.jar
+
+​	slf4j-api-1.7.21.jar
+
+​	slf4j-log4j12-1.7.21.jar
+
+### 2、ehcache要工作需要一个配置文件：
+
+​	文件名叫ehcache.xml
+
+​	放在类路径的根目录下
+
+### 3、在sql映射文件中配置使用自定义缓存
+
+通过type属性引入EhcacheCache的全类名
+
+```xml
+<cache type="org.mybatis.caches.ehcache.EhcacheCache"/>
+```
+
+或者缓存引用，通过namespace属性：引入和那个dao接口使用同一个缓存机制
+
+```xml
+<cache-ref namespace="com.liobio.dao.TeacherDao"/>
+```
 
